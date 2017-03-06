@@ -9,5 +9,5 @@ vblk-naddrs(4) {
  03: (0x000300000000000a){ ch(00), lun(03), pl(0), blk(0010), pg(000), sec(0) }
 }
 Ran nvm_buf_alloc, elapsed wall-clock: 0.000012
-Ran nvm_buf_fill|nvm_buf_from_file, elapsed wall-clock: 0.056390
-Ran nvm_vblk_write, elapsed wall-clock: 1.077695
+Ran nvm_buf_fill|nvm_buf_from_file, elapsed wall-clock: 0.073046
+Ran nvm_vblk_write, elapsed wall-clock: 1.076874
