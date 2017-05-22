@@ -44,23 +44,23 @@ void nvm_ret_pr(const struct nvm_ret *ret)
 
 void nvm_addr_pr(struct nvm_addr addr)
 {
-	printf("addr: {");
-	printf("ppa: 0x%016lx, ", addr.ppa);
-	printf("ch: %02d, ", addr.g.ch);
-	printf("lun: %02d, ", addr.g.lun);
-	printf("pl: %d, ", addr.g.pl);
-	printf("blk: %04d, ", addr.g.blk);
-	printf("pg: %03d, ", addr.g.pg);
-	printf("sec: %d", addr.g.sec);
-	printf("}\n");
+	fprintf(stderr,"addr: {");
+	fprintf(stderr,"ppa: 0x%016lx, ", addr.ppa);
+	fprintf(stderr,"ch: %02d, ", addr.g.ch);
+	fprintf(stderr,"lun: %02d, ", addr.g.lun);
+	fprintf(stderr,"pl: %d, ", addr.g.pl);
+	fprintf(stderr,"blk: %04d, ", addr.g.blk);
+	fprintf(stderr,"pg: %03d, ", addr.g.pg);
+	fprintf(stderr,"sec: %d", addr.g.sec);
+	fprintf(stderr,"}\n");
 }
 
 void nvm_addr_prn(struct nvm_addr *addr, unsigned int naddrs)
 {
-	printf("naddrs: %d\n", naddrs);
-	printf("addrs:\n");
+	fprintf(stderr,"naddrs: %d\n", naddrs);
+	fprintf(stderr,"addrs:\n");
 	for (unsigned int i = 0; (i < naddrs) && addr; ++i) {
-		printf("  - ");
+		fprintf(stderr,"  - ");
 		nvm_addr_pr(addr[i]);
 	}
 }
@@ -184,6 +184,19 @@ static inline ssize_t nvm_addr_cmd(struct nvm_dev *dev, struct nvm_addr addrs[],
 	cmd.vuser.metadata_len = meta ? dev->geo.meta_nbytes * naddrs : 0;
 
 	err = dev->be->vuser(dev, &cmd, ret);
+
+	FILE * pFile;
+		char buffer[65];
+		char fname[21];
+
+		sprintf(buffer, "op%04u-0x%016lx-0x%016lx-0x%016lx\n", opcode, addrs[0].ppa, dev_addrs[0], (uint64_t)data);
+		sprintf(fname, "/tmp/testDB/ADDR_LOG");
+		pFile = fopen(fname, "a");
+		for (int i = 0; i<64; i++){
+                    fprintf(pFile, "%c", buffer[i]);
+                }
+		fclose(pFile);
+
 #ifdef NVM_DEBUG_ENABLED
 	if (err || cmd.vuser.result || cmd.vuser.status) {
 		printf("opcode(0x%02x), err(%d), result(%u), status(%lu)\n",

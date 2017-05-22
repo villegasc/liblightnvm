@@ -34,6 +34,8 @@
 #include <nvm_vblk.h>
 #include <nvm_omp.h>
 #include <nvm_utils.h>
+//#include <fstream>
+//#include <iostream>
 
 static inline int NVM_MIN(int x, int y) {
 	return x < y ? x : y;
@@ -129,7 +131,7 @@ ssize_t nvm_vblk_erase(struct nvm_vblk *vblk)
 	const struct nvm_geo *geo = nvm_dev_get_geo(vblk->dev);
 	const int PMODE = vblk->dev->pmode;
 
-	const int BLK_NADDRS = PMODE ? 1 : geo->nplanes;
+	const int BLK_NADDRS = PMODE ? geo->nplanes:1;
 	const int CMD_NBLKS = _cmd_nblks(vblk->nblks,
 				vblk->dev->erase_naddrs_max / BLK_NADDRS);
 	const int NTHREADS = vblk->nblks < CMD_NBLKS ? 1 : vblk->nblks / CMD_NBLKS;
@@ -175,7 +177,7 @@ ssize_t nvm_vblk_erase(struct nvm_vblk *vblk)
 			const int idx = off + (i / BLK_NADDRS);
 
 			addrs[i].ppa = vblk->blks[idx].ppa;
-			addrs[i].g.pl = PMODE ? 0 : i % geo->nplanes;
+			addrs[i].g.pl = PMODE ? i % geo->nplanes:0;
 		}
 
 		err = nvm_addr_erase(vblk->dev, addrs, naddrs, PMODE, &ret);
@@ -293,6 +295,8 @@ ssize_t nvm_vblk_pwrite(struct nvm_vblk *vblk, const void *buf, size_t count,
 			addrs[i].g.pg = pg;
 			addrs[i].g.pl = (i / geo->nsectors) % geo->nplanes;
 			addrs[i].g.sec = i % geo->nsectors;
+			//fprintf(stdout, "LLNVM_W:");
+			//nvm_addr_pr(addrs[i]);
 		}
 
 		const ssize_t err = nvm_addr_write(vblk->dev, addrs, naddrs,
@@ -302,6 +306,23 @@ ssize_t nvm_vblk_pwrite(struct nvm_vblk *vblk, const void *buf, size_t count,
 
 		#pragma omp ordered
 		{}
+		FILE * pFile;
+		char buffer[32];
+		char fname[32];
+
+		sprintf(buffer, "/tmp/testDB/W0x%016lx", addrs[0].ppa);
+		sprintf(fname, "/tmp/testDB/B0x%016lx", vblk->blks[0].ppa);
+		pFile = fopen(fname, "a");
+		for (int i = 0; i<32; i++){
+                    fprintf(pFile, "%c", buffer[i]);
+                }
+		for (int i = 0; i<128; i++){
+                    fprintf(pFile, "%c", buf_off[i]);
+		    if ((i+1)%32==0)
+		        fprintf(pFile, "\n");
+                }
+		fclose(pFile);
+		
 	}
 
 	free(padding_buf);
@@ -310,7 +331,7 @@ ssize_t nvm_vblk_pwrite(struct nvm_vblk *vblk, const void *buf, size_t count,
 		errno = EIO;
 		return -1;
 	}
-
+	
 	return count;
 }
 
@@ -379,10 +400,29 @@ ssize_t nvm_vblk_pread(struct nvm_vblk *vblk, void *buf, size_t count,
 			addrs[i].g.pg = pg;
 			addrs[i].g.pl = (i / geo->nsectors) % geo->nplanes;
 			addrs[i].g.sec = i % geo->nsectors;
+			//fprintf(stdout, "LLNVM_R:");
+			//nvm_addr_pr(addrs[i]);
 		}
 
 		const ssize_t err = nvm_addr_read(vblk->dev, addrs, naddrs,
 						  buf_off, NULL, PMODE, &ret);
+		FILE * pFile;
+		char buffer[32];
+		char fname[32];
+
+		sprintf(buffer, "/tmp/testDB/R0x%016lx", addrs[0].ppa);
+		sprintf(fname, "/tmp/testDB/B0x%016lx", vblk->blks[0].ppa);
+		pFile = fopen(fname, "a");
+		for (int i = 0; i<32; i++){
+                    fprintf(pFile, "%c", buffer[i]);
+                }
+		for (int i = 0; i<128; i++){
+                    fprintf(pFile, "%c", buf_off[i]);
+		    if ((i+1)%32==0)
+		        fprintf(pFile, "\n");
+                }
+		fclose(pFile);
+		
 		if (err)
 			++nerr;
 
@@ -394,7 +434,6 @@ ssize_t nvm_vblk_pread(struct nvm_vblk *vblk, void *buf, size_t count,
 		errno = EIO;
 		return -1;
 	}
-
 	return count;
 }
 
@@ -437,10 +476,10 @@ size_t nvm_vblk_get_pos_write(struct nvm_vblk *vblk)
 
 void nvm_vblk_pr(struct nvm_vblk *vblk)
 {
-	printf("vblk:\n");
-	printf("  dev: {pmode: '%s'}\n", nvm_pmode_str(nvm_dev_get_pmode(vblk->dev)));
-	printf("  nbytes: %lu\n", vblk->nbytes);
-	printf("  nmbytes: %lu\n", vblk->nbytes >> 20);
+	fprintf(stderr, "vblk:\n");
+	fprintf(stderr, "  dev: {pmode: '%s'}\n", nvm_pmode_str(nvm_dev_get_pmode(vblk->dev)));
+	fprintf(stderr, "  nbytes: %lu\n", vblk->nbytes);
+	fprintf(stderr, "  nmbytes: %lu\n", vblk->nbytes >> 20);
         nvm_addr_prn(vblk->blks, vblk->nblks);
 }
 
